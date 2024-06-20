@@ -1,0 +1,332 @@
+---
+title: "STA 108 Project 2"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+# Part I  
+
+
+## 6.28  
+```{r}
+Data = read.table("CDI.txt")
+colnames(Data)[5] <- "Total_Population"
+colnames(Data)[4] <- "Land_Area"
+colnames(Data)[16] <- "Income"
+colnames(Data)[8] <- "Active_Physicians"
+colnames(Data)[7] <- 'pop_65_old'
+colnames(Data)[9] <- 'hospital_beds'
+
+Data$pop_density=(Data$Total_Population)/(Data$Land_Area)
+new1 <- Data[c('Active_Physicians','Total_Population','Land_Area','Income')]
+new2 <- Data[c('Active_Physicians','pop_density','pop_65_old','Income')]
+```
+
+
+### a.  
+
+Model 1 stem and leaf plots:  
+  
+Total Population:  
+```{r}
+stem(new1$`Total_Population`)
+```
+
+Land Area:  
+```{r}
+stem(new1$`Land_Area`)
+```
+
+Total Income:  
+```{r}
+stem(new1$Income)
+```
+The stem and leaf plots for model 1 shows that the data for the predictor variables are skewed right.  
+
+Model 2 stem and leaf plots:     
+
+Population of 65 and older:  
+```{r}
+stem(new2$pop_65_old)
+```
+
+Population Density:  
+```{r}
+stem(new2$pop_density)
+```
+
+Total Income:  
+```{r}
+stem(new2$Income)
+```
+
+The stem-and-leaf plot for the the population over 65 is more symmetric than the other two. The other two variables are extremely right skewed.  
+
+
+
+
+### b.  
+```{r}
+pairs(new1)
+cor(new1)
+```
+The linear correlation between active physicians and total population, active physicians and total income, as well as total income and total population are all greater than or equal to 0.94.  
+The linear correlation for the rest of the predictor variables are much weaker.  
+
+```{r}
+pairs(new2)
+cor(new2)
+```
+It looks the the linear relationship or correlation for model2 is extremely strong between the active physicians and income total variables with a correlation of .948, the other variables either have a negative correlation with each other or it's less than .5.  
+
+### c.  
+```{r}
+model1 <- lm(Active_Physicians ~ Total_Population + Land_Area + Income, data = new1)
+model1
+
+model2 <- lm(Active_Physicians ~ pop_density + Income + pop_65_old, data=new2)
+model2
+```
+
+### d.  
+```{r}
+summary(model1)$r.squared
+summary(model2)$r.squared
+```
+Model 2 is preferred because the R^2 is .912 and model 1's R^2 is .903.  
+
+
+
+### e.  
+```{r}
+#For Model 1:
+par(mfrow=c(2,2))
+Residuals1 <- residuals(model1)
+
+plot(fitted(model1),Residuals1, xlab="Fitted Values", ylab="Residuals", main = "Model 1")
+abline(h=0,col='black')
+
+plot(Data$Total_Population, Residuals1, xlab = "Total Population", ylab = "Residuals", main = "Model 1")
+abline(h = 0, col = "black")
+
+plot(Data$Land_Area , Residuals1,xlab = "Land Area", ylab = "Residual", main = "Model 1")
+abline(h=0, col = 'black')
+
+plot(Data$Income, Residuals1, xlab = "Total Income", ylab = "Residuals", main = "Model 1")
+abline(h=0, col = 'black')
+
+plot(exp(log(Data$Total_Population)+log(Data$Land_Area)),Residuals1, xlab = "Total Population*Land Area", ylab = "Residuals", main = "Model 1")
+abline(h=0,col='black')
+
+plot(exp(log(Data$Total_Population) + log(Data$Income)), Residuals1, xlab = "Total Population * Income", ylab = "Residuals", main = "Model 1")
+abline(h=0,col='black')
+
+plot(exp(log(Data$Land_Area) + log(Data$Income)), Residuals1, xlab = "Land Area * Income", ylab = "Residuals",  main = "Model 1")
+abline(h=0,col='black')
+
+qqnorm(Residuals1, main = "Model 1 - Normal QQ Plot")
+qqline(Residuals1, col = 'black')
+
+
+#For Model 2:
+
+resids = model2$residuals
+yo_hat = model2$fitted.values
+par(mfrow=c(2,2))
+
+
+plot(x=yo_hat, y=resids, xlab="Fitted Values", ylab="Residuals", main = "Model 2")
+abline(h=0, col = 'black')
+
+plot(x=new2$pop_density, y=resids, xlab="Pop Density", ylab="Residuals", main = "Model 2")
+abline(h=0, col = 'black')
+
+plot(x=new2$pop_65_old, y=resids, xlab="Pop Over 65", ylab="Residuals", main = "Model 2")
+abline(h=0, col = 'black')
+
+plot(x=new2$Income, y=resids, xlab="Personal Income", ylab="Residuals", main = "Model 2")
+abline(h=0,col = 'black')
+
+plot(x=exp(log(new2$Income)+log(new2$pop_65_old)), y=resids, xlab="Personal Income * Pop Over 65", ylab="Residuals", main = "Model 2")
+abline(h=0,col='black')
+
+plot(x=exp(log(new2$Income)+log(new2$pop_density)), y=resids, xlab="Personal Income * Pop Density", ylab="Residuals", main = "Model 2")
+abline(h=0,col = 'black')
+
+plot(x=exp(log(new2$pop_65_old)+log(new2$pop_density)), y=resids, xlab="Pop Density * Pop Over 65", ylab="Residuals", main = "Model 2")
+abline(h=0, col = 'black')
+
+qqnorm(resids, main = "Model 2 - Normal QQ Plot")
+qqline(resids, col = 'black')
+```
+  
+Model 1:  
+Most of the plots shows a wide spread of the residuals. The majority of the residuals reside within the range -2000 to 2000. However, there are a few residuals that are outside of this range, so some data points may not fit along the regression line as closely as the rest of the points.  
+The normal QQ plot shows that the tail ends of the data do not fit the line. So our graph shows heavy tails, which means that there are some extreme data points that don't fit the regression line.  
+
+Model 2:  
+The residuals for each plot range from about -3000 to 2000. All the models except the residuals fitted against the population over 65 have a majority of the points ranging from -1000 to 1000. However, for the plot for the population over 65 it looks like more of them are closer to zero, so the regression model fits for that predictor.  
+The normal qq plot is not completely linear but there is a clear line with some curves, so the regression model can be considered a slightly better than average fit.  
+  
+Results:   
+Model 2 is preferable since some of the residuals are closer to 0. Also it would seem that there may be less outliers in model 2.  
+
+
+### f.  
+
+```{r}
+model1_a <- lm(Active_Physicians ~ Total_Population + Land_Area + Income +
+Total_Population:Land_Area + Total_Population:Income + Land_Area:Income,
+data = new1)
+
+summary(model1_a)$r.squared
+
+model2_a <- lm(Active_Physicians ~ pop_density + Income + pop_65_old +
+  pop_65_old:pop_density +
+                 pop_65_old:Income +
+                 pop_density:Income,
+               data = new2)
+summary(model2_a)$r.squared
+```
+Model 2 is preferable because the R^2 is .923 and the R^2 on model 1 is .906.    
+
+# Part II  
+
+### a.  
+
+```{r}
+model3 = lm(Active_Physicians~ Total_Population+Land_Area+Income, data = Data)
+anova(model3)
+
+#X1,X2,X3
+anova(lm(Active_Physicians ~ Total_Population + Income + Land_Area, data = Data))
+R2.X1X2X3 = 0.02882496
+print(R2.X1X2X3)
+
+#X1,X2,X4
+anova(lm(Active_Physicians~ Total_Population + Income + pop_65_old, data=Data))
+R2.X1X2X4 = 0.003842365
+print(R2.X1X2X4)
+
+#X1,X2,X5
+anova(lm(Active_Physicians ~ Total_Population + Income + hospital_beds, data=Data))
+R2.X1X2X5 = 0.5538182
+print(R2.X1X2X5)
+```
+
+### b.  
+
+It would be the predictor for the number of hospital beds (X5) since it has the largest R2 compared to the rest. Furthermore, yes the ESS associated with variable X5 is indeed the biggest.  
+
+### c.  
+
+```{r}
+model3 = Data[c('Active_Physicians','Total_Population','Income')] 
+colnames(model3) = c("y","x1","x2")
+
+fit = lm(y~x1+x2, data=model3)
+X = model.matrix(fit)
+Y = model3$y
+n = nrow(X)
+p = ncol(X)
+y_hat = fit$fitted.values
+
+SSTO = sum((Y-mean(Y))^2)
+SSE = sum((Y-y_hat)^2)
+SSR = sum((y_hat-mean(Y))^2)
+MSR = SSR/(p-1)
+MSE = SSE/(n-p)
+F_stat=MSR/MSE
+
+result=data.frame(Source=c("Regression", "Error", "Total"),
+Df=c(p-1, n-p,n-1), SS=c(SSR, SSE, SSTO),
+MS=c(MSR, MSE,NA), F_value=c(F_stat,NA,NA))
+#table(result)
+
+FTEST = MSR/MSE
+Criticalvalue = qf(1-0.01, p-1,n-p)
+print(Criticalvalue)
+pvalue =  1-pf(FTEST, p-1,n-p)
+
+knitr::kable(result)
+```
+
+We reject the null hypothesis since our F test statistic is greater than our critical value therefore we are able to conclude the existence of a regression relation. I do not believe that the F test would be as large as this one here since if we were able to see previously in part b, the coefficient of partial determination of the other predictor variables are not as large as X5.  
+
+
+### d.  
+```{r}
+SSE = anova(lm(Active_Physicians ~ Total_Population + Income, data= Data))[3,2]
+
+#T = anova(lm(Active_Physicians ~ Total_Population + Income + Land_Area + pop_65_old, data = Data))
+#print((T[3,3]+T[4,3])/SSE)
+
+#anova(lm(Active_Physicians~Total_Population+Income+ Land_Area + pop_65_old, data=Data))
+SSR=4063370+608535
+SSE=4063370+608535+136295177
+SSR/SSE
+
+#anova(lm(Active_Physicians~Total_Population+Income+ Land_Area + hospital_beds, data=Data))
+SSR=4063370+74289406
+SSE=4063370+74289406+136295177
+SSR/SSE
+
+anova(lm(Active_Physicians~Total_Population+Income+ pop_65_old + hospital_beds, data=Data))
+SSR=541647+79002640
+SSE=541647+79002640+61422794
+SSR/SSE
+
+model_1= Data[c('Active_Physicians','Total_Population','Income', 'pop_65_old', 'hospital_beds')]
+colnames(model_1) = c('y','x1','x2','x4','x5')
+fit = lm(y~x1+x2+x4+x5, data=model_1)
+X= model.matrix(fit)
+n=nrow(X)
+p=ncol(X)
+#n
+#p
+
+Y = model_1$y
+y_hat = fit$fitted.values
+SSTO = sum((Y-mean(Y))^2)
+SSE = sum((Y-y_hat)^2)
+SSR = sum((y_hat-mean(Y))^2)
+MSR = SSR/(p-1)
+MSE = SSE/(n-p)
+F_stat=MSR/MSE
+
+result=data.frame(Source = c("Regression", "Error", "Total"),
+                  Df=c(p-1, n-p,n-1), SS=c(SSR, SSE, SSTO),
+                  MS=c(MSR, MSE,NA), F_value=c(F_stat,NA,NA))
+
+knitr::kable(result)
+qf(1-.01, p-1,n-p)
+```
+
+The R^2 is highest when using total population, total personal income, number of hospital beds, and the percentage of the population that is over 65 years old.  
+
+Since the test statistic of the F test is greater than the critical value we reject the null hypothesis. There is a regression relation which shows that X4 and X5 are appropriate predictor variables.  
+
+# Part III  
+
+From the coefficient of determination and the different residual plots, along with the normal QQ plot, we can interpret which combination of predictor variables was more appropriate to use in the multivariate regression model.  
+Model 1 had a coefficient of determination of .903 whereas model 2 had a coefficient of determination of .912.  
+Model 2, with predictor variables population density, percent of the population over 65, and total personal income gave a slightly better fit than model 1 with land area, total population, and total personal income.    
+From the scatter plot matrix and the correlation matrix, we can also see with variables had a stronger linear correlation. We can see that both model 1 and model 2 had variables with a strong linear correlation, so they are both a good fit according to the correlation matrix, but we should look at more of the evidence.  
+
+Furthermore, calculating the coefficient of partial determination for the combination of predictor variables showed which ones were the best to make the regression model. Given that X1 and X2 were there, X5 (the number of hospital beds) showed to be the best predictor. The F test conducted displays the F test statistic to see if the regression model with X1 and X2 are a good fit, which from the result we can say it is.  
+
+Ommitting the outliers would improve the multivariate regression function since some of the data has some outliers that end up skewing the residual plots and the normal QQ plot. Also from the QQ normal plots, both models are 'heavy tailed', so it would be better to gather data that is more normally distributed.    
+
+
+
+
+
+#  Appendix  
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

@@ -1,0 +1,276 @@
+---
+title: "STA 135 Final Project"
+author: "Nisha Thiagaraj"
+date: "2023-12-12"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+We want to analyze the factors that influence the ranking of quality for the six hundred different Portuguese wines. We are going to manipulate and transform the data so that we are able to look at the relationships and fit models to see what factors predict the quality the most accurately. We will use linear discriminant analysis to use linear models to distinguish classes.
+
+### Reading Data In
+```{r}
+library(MASS)
+library(klaR)
+library(caret)
+
+wine <- read.csv("/Users/Nfaith21/Downloads/wine.csv")
+```
+
+
+### Transforming Data
+Since some of the units are not consistent with the other we will have to change them so that they are the same units.
+
+Free sulfur dioxide ($mg/dm^3$) and Total sulfur dioxide ($mg/dm^3$) need to become $g/dm^3$
+Density ($g/cm^3$) need to become $g/dm^3$
+
+```{r}
+new_wine<-wine
+
+# Changing units with dimensional analysis
+new_wine$free.sulfur.dioxide <- wine$free.sulfur.dioxide/1000
+new_wine$total.sulfur.dioxide <- wine$total.sulfur.dioxide/1000
+new_wine$density <-  wine$density*1000
+```
+
+We also want to scale and center the data so that we can assure that all variables give an equal contribution to the data and do not dominate the model.
+
+```{r}
+new_wine<-scale(new_wine[,1:11], center = TRUE, scale = TRUE)
+
+new_wine<-data.frame(cbind(new_wine, quality=wine$quality, red=wine$red))
+
+head(new_wine)
+```
+
+```{r}
+# calculate correlation between variables and quality
+cor(new_wine$quality,new_wine[ ,colnames(new_wine) != "quality"])
+```
+
+We can see that the highest correlation to quality is the alcohol vol.% with a correlation of.558, so it would be interesting to see how alcohol predicts the quality within a model. On the other hand the variable red which tells us if the wine is red or white has a correlation of 0 corresponding to quality, so we can omit that from our models.
+
+
+### Test and Train
+
+We want to split the data into a train and test to see if our model is able to accurately predict results and confirm that it has been trained properly.
+
+```{r}
+## setting seed to prevent the obtained data from changing
+set.seed(190)
+
+# Splits data into test, train
+# We want roughly 70% of the data to be in the training set
+splitted <- sample(c(TRUE,FALSE), nrow(wine), replace=TRUE,
+                   prob=c(0.7,0.3))
+
+train <- wine[splitted, ]
+
+test <- wine[!splitted, ]
+
+# Printing out dimensions for each data set
+nrow(train)
+ncol(train)
+
+nrow(test)
+ncol(test)
+```
+After randomly splitting the data into a test and train, we can see that the train data set has 415 rows, while the test set has 185 rows in total making up 600 rows. The data was roughly split into 70-30 for train and test.
+
+
+### Linear Discriminant Analysis
+
+We now use lda to fit our train data and find linear models that are able to accurately separate the data with the given factors into individual classes for the quality.
+
+The first model will involve the acidity variables to see how that affects the quality.
+
+The second model will involve the sulfur dioxide variables to see how that affects the quality.
+
+The third model will involve the other variables with the units of $g/dm^3$ since they are more miscellaneous factors to see how that affects the quality.
+
+Finally, the fourth model will involve the rest of the variables that do not have the same units to see to see how that affects the quality.
+
+
+```{r}
+# Fitting the lda model with the acidity variables versus quality
+fit1=lda(quality ~ fixed.acidity + volatile.acidity + citric.acid, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd1 <- predict(fit1, test[,1:3])
+
+# Comparing the predicted results versus the actual responses in a confusion matrix
+tab1 <- table(prd1$class, test$quality,  dnn = c("Predicted",
+                                                         "Actual"))
+tab1
+
+# Calculating the accuracy
+sum(diag(tab1))/sum(tab1)
+
+# Shows a plot of the classification of quality where we can see the decision boundaries
+partimat(test[,1:3], as.factor(test$quality), method = "lda")
+
+```
+
+
+```{r}
+# Fitting the lda model with the sulfur dioxide variables versus quality
+fit2=lda(quality ~ free.sulfur.dioxide + total.sulfur.dioxide, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd2 <- predict(fit2, test[,6:7])
+
+# Comparing the predicted results versus the actual responses in a confusion matrix
+tab2 <- table(prd2$class, test$quality, dnn = c("Predicted",
+                                                         "Actual"))
+tab2
+
+# Calculating the accuracy
+sum(diag(tab2))/sum(tab2)
+
+# Shows a plot of the classification of quality where we can see the decision boundaries
+partimat(test[,6:7], as.factor(test$quality), method = "lda")
+```
+
+
+
+```{r}
+# Fitting the lda model with the misc. variable with the same units versus quality
+fit3=lda(quality ~ residual.sugar + chlorides + density + sulphates, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd3 <- predict(fit3, test[,c(4,5,8,10)])
+
+tab3 <- table(prd3$class, test$quality, dnn = c("Predicted",
+                                                         "Actual"))
+tab3
+
+# Calculating the accuracy
+sum(diag(tab3))/sum(tab3)
+
+#Shows a plot of the classification of quality where we can see the decision boundaries
+partimat(test[,c(4,5,8,10)], as.factor(test$quality), method = "lda")
+```
+```{r}
+# Fitting the lda model with the misc. variable with different units versus quality
+fit4=lda(quality ~ pH + alcohol, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd4 <- predict(fit4, test[,c(9,11)])
+
+# Comparing the predicted results versus the actual responses in a confusion matrix
+tab4 <- table(prd4$class, test$quality, dnn = c("Predicted",
+                                                         "Actual"))
+tab4
+
+# Calculating the accuracy
+sum(diag(tab4))/sum(tab4)
+
+# Shows a plot of the classification of quality where we can see the decision boundaries
+partimat(test[,c(9,11)], as.factor(test$quality), method = "lda") 
+```
+```{r}
+# Fitting the lda model with the misc. variable with different units versus quality
+fit5=lda(quality ~ sulphates + chlorides + alcohol, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd5 <- predict(fit5, test[,c(5,10,11)])
+
+# Comparing the predicted results versus the actual responses in a confusion matrix
+tab5 <- table(prd5$class, test$quality, dnn = c("Predicted",
+                                                         "Actual"))
+tab5
+
+# Calculating the accuracy
+sum(diag(tab5))/sum(tab5)
+```
+
+
+### Conclusions
+
+We had four models and model 4 had the best accuracy of .557. It was suspected because the alcohol vol.% has the highest correlation with quality. In addition, the error rate for the partition plot was the lowest compared to all the other ones in the three other models. It also seems to look like sulfur dioxides and the acidity of the alcohols do not play a great contribution to what the quality of the wine is since model 1 and 2 did not do as well. For model 3, we had four different variables with an accuracy of .49 which is not as accurate. However, the plot with the lowest error rate was the one with the variables sulphates and chloride. We can determine that they are also good predictors of quality. So finally, having alcohol vol.%, sulphates, and chlorides as the best factors to use to predict quality we use them in a new lda model and get an accuracy of .568.
+
+```{r, results='hide', fig.show='hide'}
+## setting seed to prevent the obtained data from changing
+set.seed(190)
+
+# Splits data into test, train
+# We want roughly 70% of the data to be in the training set
+splitted <- sample(c(TRUE,FALSE), nrow(clean_scale), replace=TRUE,
+                   prob=c(0.7,0.3))
+
+train <- clean_scale[splitted, ]
+
+test <- clean_scale[!splitted, ]
+
+# Printing out dimensions for each data set
+nrow(train)
+ncol(train)
+
+nrow(test)
+ncol(test)
+
+# Fitting the lda model with the acidity variables and quality response from the train data
+fit1=lda(quality ~ fixed.acidity + volatile.acidity + citric.acid, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd1 <- predict(fit1, test[,1:3])
+
+# Comparing the predicted results versus the actual responses in a confusion matrix
+tab1 <- table(prd1$class, test$quality,  dnn = c("Predicted","Actual"))
+tab1
+
+# Calculating the accuracy
+sum(diag(tab1))/sum(tab1)
+
+# Fitting the lda model with the sulfur dioxide variables and quality response from the train data
+fit2=lda(quality ~ free.sulfur.dioxide + total.sulfur.dioxide, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd2 <- predict(fit2, test[,6:7])
+
+# Comparing the predicted results versus the actual responses in a confusion matrix
+tab2 <- table(prd2$class, test$quality, dnn = c("Predicted","Actual"))
+tab2
+
+# Calculating the accuracy
+sum(diag(tab2))/sum(tab2)
+
+# Fitting the lda model with the misc. variable with the same units and quality response from the train data
+fit3=lda(quality ~ residual.sugar + chlorides + density + sulphates, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd3 <- predict(fit3, test[,c(4,5,8,10)])
+
+tab3 <- table(prd3$class, test$quality, dnn = c("Predicted", "Actual"))
+tab3
+
+# Calculating the accuracy
+sum(diag(tab3))/sum(tab3)
+
+# Fitting the lda model with the misc. variable with different units and quality response from the train data
+fit4=lda(quality ~ pH + alcohol, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd4 <- predict(fit4, test[,c(9,11)])
+
+# Comparing the predicted results versus the actual responses in a confusion matrix
+tab4 <- table(prd4$class, test$quality, dnn = c("Predicted", "Actual"))
+tab4
+
+# Calculating the accuracy
+sum(diag(tab4))/sum(tab4)
+
+# Fitting the lda model with the misc. variable with different units and quality response from the train data
+fit5=lda(quality ~ sulphates + chlorides + alcohol, data=train) 
+
+# Predicting using the fitted model on the test data set using
+prd5 <- predict(fit5, test[,c(5,10,11)])
+
+# Comparing the predicted results versus the actual responses in a confusion matrix
+tab5 <- table(prd5$class, test$quality, dnn = c("Predicted", "Actual"))
+tab5
+
+# Calculating the accuracy
+sum(diag(tab5))/sum(tab5)
+```

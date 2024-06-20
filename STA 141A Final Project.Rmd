@@ -1,0 +1,898 @@
+---
+title: 'Analysis of University Crime in California'
+abstract: |
+  Millions of young adults attend university every year, and millions more live,
+  work, and visit campuses across the country. While college 
+  campuses are generally safe environments, there are 
+  still frequent instances of a variety of crimes every year.
+  This project aims to evaluate the relationship between types and rates of crime 
+  on public university campuses in California and a variety of economic, academic, 
+  or other external factors.
+---
+
+\thispagestyle{empty}
+  
+```{r setup, include=F}
+# Directory Initialization
+knitr::opts_knit$set(
+  root.dir = "/Users/mhschool/Desktop/Fall 2023/STA 141A/Final Project/Datasets")
+```
+
+```{r, echo=F, message=FALSE}
+# Import relevant libraries
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(gridExtra)
+library(caret)
+the.data <- read_excel("ProjectData-1.xlsx")
+
+# Omit rows with "NA" values
+# (This is just the UCSF Row)
+the.data <- na.omit(the.data)
+
+# Remove dollar signs and commas for Net.Price, change to numeric value
+the.data$Net.Price <- gsub("\\$", "", the.data$Net.Price) # Remove dollar sign
+the.data$Net.Price <- gsub(",", "", the.data$Net.Price) # Remove commas
+the.data$Net.Price <- as.numeric(the.data$Net.Price)
+
+# Adjust Crime Numbers for Enrollment/Population to be per 1000
+the.data$Campus_Property_Crime_per1000 <- the.data$Campus_Property_Crime / 
+  the.data$Enrollment * 1000
+the.data$Campus_Violent_Crime_per1000 <- the.data$Campus_Violent_Crime / 
+  the.data$Enrollment * 1000
+the.data$Campus_Total_Crime_per1000 <- the.data$Campus_Total_Crime / 
+  the.data$Enrollment * 1000
+the.data$County_Violent_Crime_per1000 <- the.data$County_Violent_Crime /
+  the.data$County_Population * 1000
+the.data$County_Property_Crime_per1000 <- the.data$County_Property_Crime /
+  the.data$County_Population * 1000
+the.data$County_Total_Crime_per1000 <- the.data$County_Total_Crime /
+  the.data$County_Population * 1000
+the.data$Drug_Mortality_Rate_per1000 <- the.data$Drug_Mortality_Rate /
+  the.data$County_Population * 1000
+
+# Adding some Economic Factors
+the.data$Net_Price_Thousands <- the.data$Net.Price / 1000
+the.data$County_Employment_Rate <- the.data$County_Employment / the.data$County_Population
+the.data$County_Salary_Thousands <- the.data$County_Avg_Pay / 1000
+```
+
+\
+\
+
+\centering
+![](/Users/mhschool/Desktop/Fall 2023/STA 141A/Final Project/UCD.jpeg)
+
+\raggedright
+
+\newpage
+\pagenumbering{arabic}
+
+# I: Introduction
+
+### I.1: Goals and Research Questions of Interest
+
+Public universities in California exist as a unique environment where students and
+faculty interact daily within a large and diverse community. Each university is
+different from the next; from tuition cost or academic performance to the environment
+in which the university is located, a variety of factors play a role in shaping
+the experience for those who frequent their campuses. This project identifies
+and describes how some of these factors can be shown to relate to university crime rates, 
+with the hope of providing insights that could be useful for crime projections in the future.
+
+We were particularly interested in whether factors that
+could be shown to relate to county crime rates were mirrored within a university environment.
+Additionally, a first look at our data suggested that UC campuses
+have significantly more reported crime on average compared to CSU campuses, so we were interested
+in whether this might be caused by specific factors in our data, or might relate to external
+variables such as each universities ability to report crime. Furthermore, we hoped to
+determine which factors, if any, were most related to university crime rates, with the
+goal of identifying indicators of crime that could be scaled to a larger population of universities.
+
+### I.2: Summary of Methods
+
+We began by exploring data relating to the counties that our data was collected from.
+Specifically, we identified correlations between county crime rates and measured economic
+factors, where it was observed that lower employment rates or average salary may be related
+to higher amounts of crime. 
+
+Next, similar factors were explored using university tuition rates
+as an indication of campus-specific economic factors, finding a positive 
+relationship between CSU tuition and crime rates but no relation for UC locations.
+The fact that the two university types differed in this way suggested that there might be unique
+factors between the two which relate to crime.
+
+Continuing from there, we used logistic regression to explore how well different pairs of factors predicted UC or
+CSU classification, hoping to determine which of our variables were most heavily related
+to the two university types. This showed that crime rates were significantly different
+between the two, as well as academic factors such as enrollment and graduation rates,
+but didn't indicate there were specific differences with regards to economic factors.
+
+Finally, we constructed a variety of models to explore other factors that were available
+in the data, such as county drug mortality rates, to determine if other relationships
+between campus crime existed.
+
+\newpage
+
+# II: Data
+
+\hypertarget{Data}{}
+
+Note: Specific information regarding each column of our data can be found in the Appendix,
+which can be **[jumped to by clicking here](#DataColumns).**
+
+### II.1: Summary of the Data Used
+
+The data set used throughout this project is a combination of a number of
+data sets from government agencies, collected between 2016 and 2018. 
+Throughout the project, data is adjusted for population to reduce the
+impact of changes between these years.
+
+The data includes information regarding university and respective county crime 
+statistics collected by the FBI (split into violent, property, and total crime), 
+as well as economic and demographic information of both the university and
+county populations (net tuition fees and average annual wages). Throughout
+this report, these values will be adjusted for population; either total county
+population or university enrollment.
+
+The universities measured are specific to University of California (UC) and California
+State University (CSU) locations. UC San Francisco was omitted due to a lack of
+data available, but all other locations were included.
+
+### II.2: Summary Statistics
+
+```{r, echo=F}
+## II.2: Summary Statistics / Data Overview ##
+
+Data_Overview <- data.frame(
+  UC_Info <- c(length(the.data$CSU.or.UC[the.data$CSU.or.UC == "UC"]),
+               sum(the.data$Campus_Total_Crime[the.data$CSU.or.UC == "UC"])),
+  CSU_Info <- c(length(the.data$CSU.or.UC[the.data$CSU.or.UC == "CSU"]),
+                sum(the.data$Campus_Total_Crime[the.data$CSU.or.UC == "CSU"])),
+  Ovr_Info <- c(length(the.data$CSU.or.UC),
+                sum(the.data$Campus_Total_Crime)),
+  Counties_Info <- c(length(unique(the.data$County)),
+                     sum(the.data$County_Total_Crime))
+)
+
+colnames(Data_Overview) = c("University of California",
+                            "California State University",
+                            "Combined",
+                            "Counties")
+
+rownames(Data_Overview) = c("Count", "Total Reported Crime")
+
+kable(Data_Overview,
+      caption = "Overview of the Data")
+
+```
+
+From this data, we can immediately see that, despite having fewer locations,
+there is over twice as much reported crime by the University of California compared
+to California State Universities. This may be due to higher campus enrollment at the
+University of California, but we can adjust for population to check:
+
+```{r, echo=F}
+## Summary Statistics: Crime, Economic, and Academic Overview ##
+
+# Average Total Crime per 1000
+UC_Avg_Crime_per1000 <- mean(the.data$Campus_Total_Crime_per1000[the.data$CSU.or.UC=="UC"])
+CSU_Avg_Crime_per1000 <- mean(the.data$Campus_Total_Crime_per1000[the.data$CSU.or.UC=="CSU"])
+Total_Avg_Crime_per1000 <- mean(the.data$Campus_Total_Crime_per1000)
+
+# Average Violent Crime per 1000
+UC_Avg_Violent_Crime_per1000 <- mean(the.data$Campus_Violent_Crime_per1000[the.data$CSU.or.UC=="UC"])
+CSU_Avg_Violent_Crime_per1000 <- mean(the.data$Campus_Violent_Crime_per1000[the.data$CSU.or.UC=="CSU"])
+Total_Avg_Violent_Crime_per1000 <- mean(the.data$Campus_Violent_Crime_per1000)
+
+# Average Property Crime per 1000
+UC_Avg_Property_Crime_per1000 <- mean(the.data$Campus_Property_Crime_per1000[the.data$CSU.or.UC=="UC"])
+CSU_Avg_Property_Crime_per1000 <- mean(the.data$Campus_Property_Crime_per1000[the.data$CSU.or.UC=="CSU"])
+Total_Avg_Property_Crime_per1000 <- mean(the.data$Campus_Property_Crime_per1000)
+
+# Tuition Info
+UC_Avg_Tuition <- mean(the.data$Net.Price[the.data$CSU.or.UC == "UC"])
+CSU_Avg_Tuition <- mean(the.data$Net.Price[the.data$CSU.or.UC == "CSU"])
+Ovr_Avg_Tuition <- mean(the.data$Net.Price)
+
+# Grad Rate Info
+UC_Avg_Grad_Rate <- mean(the.data$Graduation.Rate[the.data$CSU.or.UC == "UC"])
+CSU_Avg_Grad_Rate <- mean(the.data$Graduation.Rate[the.data$CSU.or.UC == "CSU"])
+Ovr_Avg_Grad_Rate <- mean(the.data$Graduation.Rate)
+
+# Create Crime Data Summary Data Frame
+Crime_By_School_Type <- data.frame(
+  UC_Info <- c(UC_Avg_Crime_per1000, UC_Avg_Violent_Crime_per1000, 
+               UC_Avg_Property_Crime_per1000, UC_Avg_Tuition, UC_Avg_Grad_Rate),
+  CSU_Info <- c(CSU_Avg_Crime_per1000, CSU_Avg_Violent_Crime_per1000, 
+                CSU_Avg_Property_Crime_per1000, CSU_Avg_Tuition, CSU_Avg_Grad_Rate),
+  Ovr_Info <- c(Total_Avg_Crime_per1000, Total_Avg_Violent_Crime_per1000, 
+                Total_Avg_Property_Crime_per1000, Ovr_Avg_Tuition, Ovr_Avg_Grad_Rate)
+)
+
+# Name Crime Data Summary Columns
+colnames(Crime_By_School_Type) <- c("University of California",
+                                    "California State University",
+                                    "Combined")
+
+# Name Crime Data Summary Rows
+rownames(Crime_By_School_Type) <- c("Total Crime (per 1000)",
+                                    "Violent Crime (per 1000)",
+                                    "Property Crime (per 1000)",
+                                    "Average Tuition ($)",
+                                    "Average Graduation Rate")
+
+# Output table of values in Crime Data Summary
+kable(round(Crime_By_School_Type,2), 
+      caption = "Overview of Crime, Economic, and Academic Statistics")
+
+```
+
+*Note for Table 2: UC, CSU, and Combined values are averaged over the category
+
+We can see again in Table 2 that there appears to be a significant difference in the
+amount of crime reported between University of California locations compared
+to California State University locations, even when adjusted for population. 
+It is important to consider that this data measures, as mentioned, **reported** 
+crime, which may be skewed by factors that relate to the universities ability to 
+accurately report incidents of crime that are not present in this data.
+
+\newpage
+
+# III. Methodologies
+
+### III.1: Exploring Factors Relating to County Crime
+
+To begin, we wanted to explore our county data with a wide scope, hoping to identify
+correlations that may indicate where to focus our analyses when we turn to campus-specific
+data. The following matrix of scatter plots containing a variety of data was plotted, which we used to
+observe the relationship between each factor of interest.
+
+```{r, echo=F, fig.height=4}
+## III.1: Exploring Factors Relating to County Crime ##
+
+# Matrix of Scatter Plots
+pairs(the.data[, c("County_Total_Crime_per1000",
+                    "Drug_Mortality_Rate_per1000", "County_Employment_Rate", 
+                    "County_Avg_Pay", "County_Population")],
+      labels = c("County Crime Rate", "Drug Mortality Rate",
+                 "Employment Rate", "County Average Pay", "County Population"))
+```
+
+Some of these plots do seem to show a relationship between variables, such as county crime
+and drug mortality rate, county average pay and employment rates, as well as county
+crime and county average pay We can compute these correlations numerically as follows:
+
+```{r, echo=F}
+correlations <- data.frame(
+  cor1 = cor(the.data$County_Total_Crime_per1000, the.data$Drug_Mortality_Rate_per1000),
+  cor2 = cor(the.data$County_Avg_Pay, the.data$County_Employment_Rate),
+  cor3 = cor(the.data$County_Total_Crime_per1000, the.data$County_Avg_Pay)
+)
+
+colnames(correlations) <- c("County Crime vs Drug Mortality Rate",
+                            "County Avg. Pay vs County Employment",
+                            "County Crime vs County Avg. Pay")
+rownames(correlations) <- c("Correlation")
+
+kable(correlations)
+```
+
+Finding a strong positive correlation (0.75) between county employment and average salary makes sense; 
+you would expect a county with more jobs to generally pay more. However, this doesn't tell us much about
+crime rates at either the campus or county level, so we will focus on the other two relationships.
+Identifying that drug mortality rates and county crime has a moderate positive correlation (0.47) suggests
+that we should explore the relationship with regards to campus crime as well. Furthermore, the moderate negative
+correlation between county crime and average pay indicates that economic factors may relate to
+crime as well.
+
+\newpage
+
+### III.2: County-Specific Analysis of Economic Factors and Crime
+
+We will continue our exploration of county data by conducting a linear regression analysis
+of the economic factors mentioned in the previous section; employment rate and average pay.
+
+```{r, echo=F}
+# Plot County Crime Rate against Economic Factors
+p1 <- ggplot(data=the.data, mapping=aes(x=County_Avg_Pay, y=County_Total_Crime_per1000)) +
+        geom_point() + 
+        geom_smooth(method = "lm", formula = y ~ x, se = FALSE, col = "black") +
+        labs(title = "Avg County Salary vs Crime", 
+             x = "Avg County Salary ($)", 
+             y = "Reported County Crime per 1000") +
+        theme(axis.text = element_text(size = 8),
+              axis.title = element_text(size = 6),
+              legend.text = element_text(size = 6),
+              legend.title = element_text(size = 8))
+
+p2 <- ggplot(data=the.data, mapping=aes(x=County_Employment_Rate, y=County_Total_Crime_per1000)) +
+        geom_point() + 
+        geom_smooth(method = "lm", formula = y ~ x, se = FALSE, col = "black") +
+        labs(title = "County Employment Rate vs Crime", 
+             x = "Employment Rate", 
+             y = "Reported Crime per 1000") +
+        theme(axis.text = element_text(size = 8),
+              axis.title = element_text(size = 6),
+              legend.text = element_text(size = 6),
+              legend.title = element_text(size = 8))
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+We can see that for both factors, there appears to be a negative correlation compared to
+crime, suggesting that as average salary or employment rate increases, it tends to
+relate to a decrease in crime. We calculated the $p$-values for these two regression
+fits, which can be seen below:
+
+```{r, echo=F}
+pvals <- data.frame(
+  p1 <- summary(lm(County_Total_Crime_per1000 ~ County_Employment_Rate, 
+                   data=the.data))$coefficients[2,4],
+  p2 <- summary(lm(County_Total_Crime_per1000 ~ County_Avg_Pay, 
+                   data=the.data))$coefficients[2,4]
+)
+
+colnames(pvals) <- c("Avg Salary vs Crime", "Employment Rate vs Crime")
+rownames(pvals) <- c("p-value")
+
+kable(pvals, caption = "Comparing County Economic Factors to Crime")
+```
+
+We can see that both county-specific economic factors have a statistically significant relationship
+to county crime rates, indicating again that we should consider economic factors
+at the university scale in our analysis of university crime.
+
+It is important to note that these results do not imply causation, so additional 
+analysis and consideration of confounding factors are necessary for 
+drawing comprehensive conclusions or policy implications based on these results.
+
+\newpage
+
+### III.3: Campus-Specific Analysis of Economic Factors and Crime
+
+We are interested in determining whether economic factors such as the net cost
+of tuition or the average annual salary for the county in which the university
+is located has any correlation to the crime rates of said universities.
+
+**Reported Crime vs Tuition**
+
+We plotted total crime per 1000 students against the net cost of tuition (in thousands of dollars),
+coloring points based on whether the corresponding university is a University of
+California (UC) or California State University (CSU) location. Linear regression
+fits can be seen in the corresponding colors for both of these categories, as
+well as a black linear regression line which is fit to the overall data, regardless
+of school type.
+
+```{r, echo=F}
+## III.3: Comparing Crime Rates to Economic Factors (Scatterplot) ##
+
+# Plot Crime Rate against Net Tuition Price
+ggplot(data=the.data, mapping=aes(x=Net_Price_Thousands, y=Campus_Total_Crime_per1000)) +
+  geom_point(aes(color = CSU.or.UC)) + 
+  geom_smooth(aes(color = CSU.or.UC), method = "lm", formula = y ~ x, se=FALSE) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, col = "black") +
+  labs(title = "Scatterplot of Net Tuition Price against Total Crime",
+       x = "Net Tuition Price (in thousands of $)", y = "Reported Crime per 1000")
+
+```
+
+Our regression fit appears to identify a positive correlation between our two
+factors of interest; as the net tuition price of a university rises, the
+amount of reported crime per 1000 students seems to rise as well. The data for
+CSU locations seems to be closer to the regression fit compared to the UC
+locations, suggesting that the model is more reasonable for the former.
+
+$p$-values were calculated for each of our three linear regression models, and
+can be seen below:
+
+```{r, echo=F}
+## III.3: Comparing Crime Rates to Economic Factors (Model Fitting) ##
+
+# The models (overall, UC, and CSU)
+ovr_model <- lm(Campus_Total_Crime_per1000 ~ Net_Price_Thousands, 
+                data = the.data)
+UC_model <- lm(Campus_Total_Crime_per1000 ~ Net_Price_Thousands, 
+               data = the.data[the.data$CSU.or.UC == "UC",])
+CSU_model <- lm(Campus_Total_Crime_per1000 ~ Net_Price_Thousands, 
+                data = the.data[the.data$CSU.or.UC == "CSU",])
+
+p_vals_Net_Price <- data.frame(
+  p_ovr <- summary(ovr_model)$coefficients[2,4], # p-value for Net_Price as a factor
+  p_UC <- summary(UC_model)$coefficients[2,4], # p-value for Net_Price as a factor
+  p_CSU <- summary(CSU_model)$coefficients[2,4] # p-value for Net_Price as a factor
+)
+
+colnames(p_vals_Net_Price) <- c("Overall Model", "UC Only", "CSU Only")
+rownames(p_vals_Net_Price) <- c("p-value")
+
+kable(p_vals_Net_Price, 
+      caption = "Linear Regression Fit: Crime vs Net Tuition Price")
+```
+
+These results show that, for the level of significance $\alpha = 0.05$, there
+is statistically significant evidence which indicates that a linear fit is
+appropriate for both the overall and CSU-specific models, but not for the UC-specific
+model.
+
+For $X$ being the net tuition price in thousands of dollars, our models can be used
+to predict the amount of reported crime per 1000 students; $\hat{Y}$.
+
+$$
+\begin{aligned}
+\hat{Y}_{OVR} &= -4.014 + 0.993X \\
+\hat{Y}_{CSU} &= 1.829 + 0.297X \\
+\end{aligned}
+$$
+
+This shows that, on average,
+we expect an increase of 0.993 instances of reported crime with respect to an
+increase in tuition of $1,000 for both UCs and CSUs overall, and an average increase
+of 0.297 instances of reported crime with respect to an increase in tuition of $1,000
+specific to CSU locations.
+
+The fact that these two rates are quite different indicates that there may be factors
+unique to UC locations that increase crime. Furthermore, the fact that the UC-specific
+regression fit did not find statistically significant evidence of a linear fit supports
+this thought; that for California State University locations there is a statistically significant 
+linear relationship between the two factors, while the same cannot be said for University of California locations.
+
+**Reported Crime vs County-Wide Economic Factors**
+
+External economic factors such as the average salary as well as the employment rate of 
+the county in which the university is located were considered as well, but no
+statistically significant relationships were found between university crime and
+said external factors. The scatter plots of this data can be seen below:
+
+```{r, echo=F, fig.height=4}
+# Plot Crime Rate against Net Tuition Price
+p1 <- ggplot(data=the.data, mapping=aes(x=County_Salary_Thousands, y=Campus_Total_Crime_per1000)) +
+        geom_point(aes(color = CSU.or.UC)) + 
+        geom_smooth(aes(color = CSU.or.UC), method = "lm", formula = y ~ x, se=FALSE) +
+        geom_smooth(method = "lm", formula = y ~ x, se = FALSE, col = "black") +
+        labs(title = "Avg County Salary vs Crime", 
+             x = "Avg County Salary (thousands of $)", 
+             y = "Reported Crime per 1000") +
+        theme(axis.text = element_text(size = 6),
+              axis.title = element_text(size = 8),
+              legend.text = element_text(size = 6),
+              legend.title = element_text(size = 8))
+
+p2 <- ggplot(data=the.data, mapping=aes(x=County_Employment_Rate, y=Campus_Total_Crime_per1000)) +
+        geom_point(aes(color = CSU.or.UC)) + 
+        geom_smooth(aes(color = CSU.or.UC), method = "lm", formula = y ~ x, se=FALSE) +
+        geom_smooth(method = "lm", formula = y ~ x, se = FALSE, col = "black") +
+        labs(title = "County Employment Rate vs Crime", 
+             x = "Employment Rate", 
+             y = "Reported Crime per 1000") +
+        theme(axis.text = element_text(size = 6),
+              axis.title = element_text(size = 8),
+              legend.text = element_text(size = 6),
+              legend.title = element_text(size = 8))
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+These results suggest that while there appears to be a positive correlation between
+tuition price and reported crime at CSU locations, external economic factors such as the
+average county salary and employment rates do not show any correlation to reported
+crime.
+
+\newpage
+
+### III.4: Examining Differences Between UC and CSU Campuses
+
+We have seen results suggesting that the amount of reported crime may vary between
+UC and CSU locations due to factors we do not have available. Essentially, UC locations
+have higher crime rates across the board, which could be due to factors we have discussed,
+but it may also suggest that they simply report more crime. We wanted to explore how
+our data relates to the two different systems' locations in regards to different
+groups of factors; county economic factors, academic factors, county crime rates, 
+and campus crime rates. To do this, we constructed four logistic regression models 
+to determine whether some of our factors were indicative of UC or CSU locations.
+
+```{r, echo=F, warning=F}
+## III.4: Preparing Data for Logistic Regression to predict UC, CSU ##
+
+the.data$Binary_Type <- ifelse(the.data$CSU.or.UC == "CSU", 1, 0)
+
+# Split data into test, train
+set.seed(190)
+
+# We want roughly 70% of the data to be in the training set
+splitted <- sample(c(TRUE,FALSE), nrow(the.data), replace=TRUE, prob=c(0.7,0.3))
+
+train <- the.data[splitted, ]
+
+test <- the.data[!splitted, ]
+
+## III.3 continued: Logistic Regression using Specific Factors of Interest ##
+
+# Logistic Fit using County Economic Measures
+logistic_CountyEcon = glm(Binary_Type ~ County_Avg_Pay + County_Employment_Rate, 
+                          data=train, family="binomial")
+
+# Logistic Fit using University Academic Factors
+logistic_Academic = glm(Binary_Type ~ Graduation.Rate + Enrollment, 
+                        data=train, family="binomial")
+
+# Logistic Fit using County Crime Measures
+logistic_CountyCrime = glm(Binary_Type ~ County_Violent_Crime_per1000 + County_Property_Crime_per1000, 
+                     data=train, family="binomial")
+
+# Logistic Fit using Campus Crime Measures
+logistic_CampusCrime = glm(Binary_Type ~ Campus_Violent_Crime_per1000 + Campus_Property_Crime_per1000, 
+                     data=train, family="binomial")
+
+# Classify test data using 0.5 threshold
+predicted1 <-ifelse(predict(logistic_CountyEcon, test, type="response")>.5,1,0)
+predicted2 <-ifelse(predict(logistic_Academic, test, type="response")>.5,1,0)
+predicted3 <-ifelse(predict(logistic_CountyCrime, test, type="response")>.5,1,0)
+predicted4 <-ifelse(predict(logistic_CampusCrime, test, type="response")>.5,1,0)
+
+confusion1 = table(test$Binary_Type, predicted1, dnn = c("True", "Predicted"))
+confusion2 = table(test$Binary_Type, predicted2, dnn = c("True", "Predicted"))
+confusion3 = table(test$Binary_Type, predicted3, dnn = c("True", "Predicted"))
+confusion4 = table(test$Binary_Type, predicted4, dnn = c("True", "Predicted"))
+
+accuracy <- data.frame(
+  CountyEcon = sum(diag(confusion1)) / sum(confusion1),
+  Academic = sum(diag(confusion2)) / sum(confusion2),
+  CountyCrime = sum(diag(confusion3)) / sum(confusion3),
+  CampusCrime = sum(diag(confusion4)) / sum(confusion4)
+)
+```
+
+Four models were fit to the binary data of 'UC' or 'CSU' classification:
+
+`County Economic Factors`: This model is fit using county average salary and
+employment rates.
+
+`Academic Factors`: This model is fit using university graduation rates and total
+enrollment.
+
+`County Crime Factors`: This model is fit using reported county violent and property
+crime per 1000 people.
+
+`Campus Crime Factors`: This model is fit using reported campus violent and property
+crime per 1000 people.
+
+For each logistic regression, we used the standard threshold of 0.5, assigning
+values '1' (aka CSU) when $P(X) > 0.5$, and values '0' (UC) when $P(X) \leq 0.5$.
+
+**Results**
+
+We found that the accuracy for our predictions was highest when using academic
+and campus crime data for classification, suggesting that there is a significant difference between
+UC and CSU campus graduation rates and their reported campus crime per 1000 in general. However,
+the county factors we explored didn't show high levels of accuracy for prediction,
+suggesting that the factors which differentiate UC and CSU crime so significantly are
+not directly tied to factors unique to the counties in which they are located.
+
+Confusion matrices were constructed for all four methods, and prediction accuracy
+rates were computed. The highest accuracy was found for the campus crime factors model,
+with a resulting confusion matrix of:
+
+```{r, echo=F}
+# Best Confusion Matrix (Campus Crime Fit)
+print(confusion4)
+```
+
+The accuracy for all four methods can be seen below:
+
+```{r, echo=F}
+rownames(accuracy) <- c("Accuracy")
+colnames(accuracy) <- c("County Econ. Factors", "Academic Factors",
+                        "County Crime Factors", "Campus Crime Factors")
+kable(accuracy, caption = "Logistic Regression for CSU/UC Classification")
+```
+
+It is important to consider that we do not have a huge sample size and we split
+the data into a train and test, which means that the data used to train the models 
+may not be the best representation of the actual population. From these results, we 
+can say that county crime rates are very mediocre predictors of whether a campus is a UC or CSU. 
+Economic factors do not matter as much because the accuracy was not that great compared to the other two models. 
+Student enrollment and graduation rate is a good indicator to whether a campus is a UC or CSU,
+as well as the campus crime rates.
+
+### III.5: Karla
+
+In this part we want to be able to predict Campus Crime Rate based on county factors. After a quick exploratory analysis of the data, campus property crime rate seems to have a higher relationship with the county factors. Given this, we are finding the best regression model that correctly estimates Campus Property Crime Rates given three county factors: County Property Crime Rate, County Drug Poisoning Mortality Rate, and County Average Pay. Here are the plots split by Campus Type (UC or CSU):
+
+```{r Crime_Plotting, echo=FALSE, message=FALSE, fig.height=3}
+## Plotting Campus Crime Rates against County Crime Rates for UCs & CSUs using ggplot 
+
+crim.p2 = ggplot(the.data) + geom_point(aes(County_Property_Crime_per1000, 
+  Campus_Property_Crime_per1000, col = CSU.or.UC)) + geom_smooth(aes(County_Property_Crime_per1000, 
+Campus_Property_Crime_per1000, col = CSU.or.UC), se = FALSE) + labs(title = "Campus Property Crime Rate vs. County Crime Rate",
+x = "County Property Crime", y = "Campus Property Crime") + theme(text = element_text(size=4.5), element_line(linewidth = .1), aspect.ratio = .5)
+
+crim.pay.p2 = ggplot(the.data) + geom_point(aes(County_Avg_Pay, 
+  Campus_Property_Crime_per1000, col = CSU.or.UC)) + geom_smooth(aes(County_Avg_Pay, 
+  Campus_Property_Crime_per1000, col = CSU.or.UC), se = FALSE) + labs(title = "Campus Property Crime Rate vs. County Average Pay", 
+  x = "County Average Pay", y = "Campus Property Crime") + theme(text = element_text(size=4.5), element_line(linewidth = .1), aspect.ratio = .5)
+
+crim.drug.p2 = ggplot(the.data) + geom_point(aes(Drug_Mortality_Rate, 
+  Campus_Property_Crime_per1000, col = CSU.or.UC)) + geom_smooth(aes(Drug_Mortality_Rate, 
+  Campus_Property_Crime_per1000, col = CSU.or.UC), se = FALSE) + labs(title = "Campus Property Crime Rate vs. County Drug Poisoning Mortality Rate", 
+  x = "Drug Poisoning Mortality Rate", y = "Campus Property Crime") + theme(text = element_text(size=4.5), element_line(linewidth = .1), aspect.ratio = .5) 
+
+grid.arrange(crim.p2,crim.pay.p2,crim.drug.p2, nrow = 2)
+```
+
+From these plots we can see that the data between CSU and UC behave differently, for this reason in our analysis we will be splitting the data into UC campuses and CSU Campuses. We can also see that there is a negative relationship between campus property crime rates and the county factors, it is more evident when looking at the plot between Campus Property Crime and County Property Crime, and between Campus Property Crime and County Drug Poisoning Mortality Rate. For UC Campuses specifically, the property crime rate remains higher when the county crime rate is lower, same with the drug poisoning mortality rate. The best data fits are not completely linear so we did an analysis with up to a third degree polynomial for each variable so that we can find the most significant models in estimating campus property crime rate. 
+
+```{r Split_Property_Crime_LM, echo=FALSE, message=FALSE}
+## Splitting the data between UCs & CSUs 
+campus.split = split(the.data$Campus_Property_Crime_per1000, the.data$CSU.or.UC)
+county.split = split(the.data$County_Property_Crime_per1000, the.data$CSU.or.UC)
+
+CSU.property.crime.rate = campus.split$CSU
+UC.property.crime.rate = campus.split$UC
+
+CSU.county.property.crime.rate = county.split$CSU
+UC.county.property.crime.rate = county.split$UC
+
+## Creating 3 models(linear & polynomial) between CSU Crime Rates and County Crime Rates using lm()
+
+CSU.crime.lm1 = lm(CSU.property.crime.rate ~ CSU.county.property.crime.rate)
+
+CSU.crime.lm2 = lm(CSU.property.crime.rate ~ CSU.county.property.crime.rate +
+                     I(CSU.county.property.crime.rate^2))
+
+CSU.crime.lm3 = lm(CSU.property.crime.rate ~ CSU.county.property.crime.rate +
+  I(CSU.county.property.crime.rate^2) + I(CSU.county.property.crime.rate^3))
+
+## Creating 3 models(linear & polynomial) between UC Crime Rates and County Crime Rates using lm()
+
+UC.crime.lm1 = lm(UC.property.crime.rate ~ UC.county.property.crime.rate)
+
+UC.crime.lm2 = lm(UC.property.crime.rate ~ UC.county.property.crime.rate +
+                    I(UC.county.property.crime.rate^2))
+
+UC.crime.lm3 = lm(UC.property.crime.rate ~ UC.county.property.crime.rate +
+I(UC.county.property.crime.rate^2) + I(UC.county.property.crime.rate^3))
+
+```
+
+```{r Drug_Crime_LM, echo=FALSE, message=FALSE, warning=FALSE}
+## Splitting Mortality Rate 
+
+county.mortality.split = split(the.data$Drug_Mortality_Rate, the.data$CSU.or.UC)
+CSU.county.mortality.split = county.mortality.split$CSU
+UC.county.mortality.split = county.mortality.split$UC
+
+## Cretating linear, quadratic and cubic models for CSU
+
+CSU.crime.drug.lm1 = lm(CSU.property.crime.rate ~ CSU.county.mortality.split)
+
+CSU.crime.drug.lm2 = lm(CSU.property.crime.rate ~ CSU.county.mortality.split +
+                          I(CSU.county.mortality.split^2))
+
+CSU.crime.drug.lm3 = lm(CSU.property.crime.rate ~ CSU.county.mortality.split +
+  I(CSU.county.mortality.split^2) + I(CSU.county.mortality.split^3))
+
+
+## Cretating linear, quadratic and cubic models for UC
+
+UC.crime.drug.lm1 = lm(UC.property.crime.rate ~ UC.county.mortality.split)
+
+UC.crime.drug.lm2 = lm(UC.property.crime.rate ~ UC.county.mortality.split +
+                         I(UC.county.mortality.split^2))
+
+UC.crime.drug.lm3 = lm(UC.property.crime.rate ~ UC.county.mortality.split +
+I(UC.county.mortality.split^2) + I(UC.county.mortality.split^3))
+
+```
+
+```{r Pay_Crime_LM, echo=FALSE, message=FALSE}
+## Splitting the average pay county data for CSU & CSU Models
+
+pay.split = split(the.data$County_Avg_Pay, the.data$CSU.or.UC)
+CSU.county.avg.pay = pay.split$CSU
+UC.county.avg.pay = pay.split$UC
+
+## Creating the linear, quadratic & cubic models between CSU Crime Rates and CSU Average Pay using lm()
+
+CSU.crime.pay.lm1 = lm(CSU.property.crime.rate ~ CSU.county.avg.pay)
+
+CSU.crime.pay.lm2 = lm(CSU.property.crime.rate ~ CSU.county.avg.pay +
+                         I((CSU.county.avg.pay)^2))
+
+CSU.crime.pay.lm3 = lm(CSU.property.crime.rate ~ CSU.county.avg.pay  +
+I((CSU.county.avg.pay)^2) + I((CSU.county.avg.pay)^3))
+
+
+## Cretating linear, quadratic and cubic models between UC & County Average Pay using lm()
+
+UC.crime.pay.lm1 = lm(UC.property.crime.rate ~UC.county.avg.pay)
+
+UC.crime.pay.lm2 = lm(UC.property.crime.rate ~ UC.county.avg.pay +
+I((UC.county.avg.pay)^2))
+
+UC.crime.pay.lm3 = lm(UC.property.crime.rate ~ UC.county.avg.pay +
+I((UC.county.avg.pay)^2) + I((UC.county.avg.pay)^3))
+
+```
+
+From our analysis we found that a linear model is the best estimator at predicting the UC Campuses property crime rate with the county property crime rate and county drug poisoning mortality rate. Whereas for CSU Campuses, only a quadratic model between CSU property crime rate and county average pay is a significant model.
+
+In table 1 and 2 the estimates of each model are shown, along with its standard deviation and p-values. Each estimate has a p-value less than 0.1, and we are considering this statistically significant. However, we still want to find which of these models is the best at predicting property crime rate for both campuses. Thus, we will do a k-fold cross validation.
+
+```{r Statistical_Summaries ,echo=FALSE, results = 'asis'}
+
+Model1 = summary(UC.crime.lm1)
+Model2 = summary(UC.crime.drug.lm1)
+Model3 = summary(CSU.crime.pay.lm2)
+
+knitr::kable(
+  list(Model1$coefficients, Model2$coefficients),
+  caption = "UC Property Crimes Linear Models"
+)
+
+knitr::kable(
+  list(Model3$coefficients),
+  caption = "CSU Property Crimes Cubic and Linear Models"
+)
+```
+
+## K-fold Cross Validation
+
+```{r K_Fold_Cross, echo=FALSE, message=FALSE, include=TRUE, warning = FALSE}
+set.seed(5)
+
+## Splitting the data into 2 data sets (UC & CSUs) so we can do cross-validation
+
+crime.data.split = split(the.data, the.data$CSU.or.UC)
+
+UC.Crime.Data = crime.data.split$UC
+CSU.Crime.Data = crime.data.split$CSU
+
+## K-fold for UC Models
+train_control = trainControl(method = "cv", 
+                              number = 3)
+## CV for Linear Model for UC Property Crime vs. County Property Crime, k = 3
+
+UC.property.crime.kmodel = train(
+  Campus_Property_Crime_per1000~ County_Property_Crime_per1000,
+  data = UC.Crime.Data,
+  method = "lm",
+  trControl = train_control
+  ) 
+
+## CV for Linear Model for UC Property Crime vs. County Drug Mortality Rate, k = 3
+
+UC.drug.crime.kmodel = train(
+  Campus_Property_Crime_per1000~ Drug_Mortality_Rate,
+  data = UC.Crime.Data,
+  method = "lm",
+  trControl = train_control
+  ) 
+
+## K-fold for CSU Models
+
+## CV for Cubic Model for CSU Property Crime vs. County Property Crime, k = 3
+
+CSU.property.crime.kmodel = train(
+  Campus_Property_Crime_per1000~ County_Avg_Pay + I(County_Avg_Pay)^2,
+  data = CSU.Crime.Data,
+  method = "lm",
+  trControl = train_control
+  ) 
+
+## CV for Linear Model for UC Property Crime vs. County Average Pay, k = 3
+
+CSU.pay.crime.kmodel = train(
+  Campus_Property_Crime_per1000 ~ County_Avg_Pay,
+  data = CSU.Crime.Data,
+  method = "lm",
+  trControl = train_control
+  ) 
+
+knitr::kable(
+  list(UC.property.crime.kmodel$results, UC.drug.crime.kmodel$results),
+  caption = "K-Fold Results for all Three Statistically Significant Models for Predicting UC Campus Property Crime Rate"
+)
+
+knitr::kable(
+  list(CSU.pay.crime.kmodel$results),
+  caption = "K-Fold Results the Two Statistically Significant Models for Predicting CSU Campus Property Crime Rate"
+)
+```
+
+In the cross-validation we are splitting the data into 3 groups, we chose 3 since the data set is small. From there we will be take one group to be the test data, and the rest to be training data: from where we compute the model to later test with the test data; and we will do this with each group. From this procedure we ended with results shown on table 3 and 4, following the same order of the models as table 1 and 2.
+
+From the results we are looking at the RMSE column, and whichever is the lowest is the best model that fits the data. In this case, it seems a linear model between the county drug poisoning mortality rate and UC property crime rate is most appropriate. There is a very minimal UC property crime rate as the drug poisoning mortality increases, and we can see this in the third plot.
+
+For CSU, the best model was a quadratic model between CSU property crime rate and the county average pay. This model is telling us that somewhere in average pay the property crime rate hits an all time low, but if the average pay increases then the property crime rate increases. However looking at the graph of the data, this might be because California State University San Jose has the county with the highest average pay, and this data point is far from the other data points considering it an outlier.
+
+
+\newpage
+
+# IV. Conclusions
+
+Our analyses identified a few relationships between campus and county crime
+rates. Statistically significant linear relationships were found showing a negative relationship
+between county crime and average county salary ($p=0.0035$) as well as county
+employment rate ($p=0.01$). This was motivation to explore the relationship between campus crime
+and the university-specific economic factor of net tuition price. In this analysis, a
+statistically significant positive linear relationship was found between campus crime and
+tuition when computing for all campuses ($p=0.00001$) as well as for CSU locations specifically
+($p=0.018$). Note that the lack of a statistically significant linear relationship for UC locations
+suggests that the overall fit might not be the most accurate. These findings suggested
+that crime at both the county and university scale can be related to economic factors such
+as employment rates, average salary amounts, and tuition rates. However, it is interesting
+that these correlations are different in direction, which could be attributed to a few
+different reasons. For instance, counties with 'better' economic standing (higher employment rates,
+etc.) might have better systems in place to reduce crime, whereas for universities, better
+economic conditions may relate to academic components more than the reduction of crime.
+Continuations on this research should address university-specific factors relating not only
+to crime but also the ways crime is reported.
+
+We saw in our data summary that UC crime rates were, on average, significantly higher
+than CSU crime rates. Through our logistic regression modeling, we found that county 
+economic and crime factors were not very accurate in predicting UC or CSU classification, 
+suggesting that this difference is not due to county factors. Furthermore, we saw that,
+just using campus crime rates, UC vs CSU classification could be accurately predicted
+at a rate of over 90%, further supporting the claim that UC locations have higher
+reported crime across the board. Future research could be targeted to explore why this
+is, as the factors we explored in this project did not allow us to definitively conclude 
+why there was such a large difference between the two school types.
+
+In conclusion, the main variables we identified as relating to crime rates in both
+campus and county settings would be classified as economic factors, such as county-wide average salary,
+employment rates, and university tuition fees. Furthermore,
+no evidence was found of county crime relating to campus crime. This may be due to 
+the size of counties in general, so it may be interesting to shrink the scope to cities
+in the future. 
+
+\newpage
+
+# Appendix
+
+### Data Columns
+
+\hypertarget{DataColumns}{}
+
+Each column is described below, with the corresponding value from the row
+corresponding to UC Davis. **[You can return to the data summary here](#Data).**
+
+`School`: The name of the school (e.g. "University of California-Davis")
+
+`CSU.or.UC`: The classification of CSU or UC type (e.g. "UC")
+
+`County`: The county in which the school is located (e.g. "Yolo")
+
+`Type`: The type of school it is (e.g. "4-year, Public")
+
+`Enrollment`: The number of enrolled students (e.g. 39,783)
+
+`Campus_Violent_Crime`: The count of reported university violent crime (e.g. 14)
+
+`Campus_Property_Crime`: The count of reported university property crime (e.g. 906)
+
+`Campus_Total_Crime`: The overall count of reported university crime (e.g. 920)
+
+`Graduation Rate`: The rate of students that graduated that year (e.g. 0.86)
+
+`Net.Price`: The net tuition price per year (e.g. $17,385)
+
+`County_Violent_Crime`: The count of reported county violent crime (e.g. 56)
+
+`County_Property_Crime`: The count of reported county property crime (e.g. 248)
+
+`County_Total_Crime`: The overall count of reported university crime (e.g. 304)
+
+`County_Population`: The county population (e.g. 215627)
+
+`County_Employment`: The number of people employed in the county (e.g. 100297)
+
+`County_Avg_Salary`: The average salary of people in the county (e.g. 55931)
+
+`Drug_Mortality_Rate`: The number of annual county deaths due to drug poisoning per 100,000 people (e.g. 12.36)
+
+### Code Appendix
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

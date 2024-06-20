@@ -1,0 +1,161 @@
+---
+title: "STA 108 Project 1"
+---
+Introduction:
+In this project we are currently trying to analyze the data set “CDI” which consists of the county demographic information of 440 of the most populated counties in the United States during the year 1990 - 1992. We will be fitting regression models for the data in terms of the number of active physicians in relation to the total population, number of hospital beds, and the total personal income. Furthermore we would be measuring linear associations with the coefficient of determination (R2). The next step would entail creating a 90% confidence interval, calculating the values for an ANOVA table, and performing an F-test to see if we reject the null hypothesis. Plotting the regression models and residuals will also be done. Finally, we will need to discuss the results that we obtained from the data.
+
+```{r}
+cdi<- read.table("/Users/Nfaith21/Downloads/CDI.txt")
+colnames(cdi) <- c("id_num", "county", 
+                   "state", "land_area",
+                   "pop_total", "pop_18_34", 
+                   "pop_65_old", "active_physicians", 
+                   "hospital_beds", "serious_crimes",
+                   "pct_hsgrad", "pct_bachelors", 
+                   "pct_poverty", "pct_unemp", 
+                   "income_percap", "income_total",
+                   "region")
+```
+Part 1
+
+Making models to show the relationship between Y (Active Physicians) and X (Hospital Beds, Pop Total, Income Total)
+
+
+```{r}
+model1 <- lm(active_physicians ~ pop_total, data = cdi)
+model1
+model2 <-lm(active_physicians ~ hospital_beds, data = cdi)
+model2
+model3 <-lm(active_physicians ~ income_total, data = cdi)
+model3
+
+par(mfrow = c(2,2))
+```
+
+Model 1, 2, and 3 Graphs
+```{r}
+plot(cdi$pop_total, cdi$active_physicians, main="Pop Total vs Num of Physicians", xlab="Pop Total", ylab="Active Physicians")
+abline(model1)
+plot(cdi$hospital_beds, cdi$active_physicians, main="Num of Beds vs Num of Physicians", xlab="Num of Beds", ylab="Active Physicians")
+abline(model2)
+plot(cdi$income_total, cdi$active_physicians, main="Income Total vs Num of Physicians", xlab="Income Total", ylab="Active Physicians")
+abline(model3)
+```
+
+Calculating the MSE for each model
+```{r}
+n <- nrow(cdi)
+mse_model1 <- sum(residuals(model1)^2) / (n-2)
+mse_model1
+mse_model2 <- sum(residuals(model2)^2) / (n-2)
+mse_model2
+mse_model3 <- sum(residuals(model3)^2) / (n-2)
+mse_model3
+```
+
+Part 2
+
+Calculating R squared
+```{r}
+head(cdi)
+Population_model = lm(active_physicians ~ pop_total, data = cdi)
+pop.summary = summary(Population_model)
+Beds_model = lm(active_physicians ~ hospital_beds, data=cdi)
+beds.summary = summary(Beds_model)
+Income_model = lm(active_physicians~income_total, data=cdi)
+income.summary = summary(Income_model)
+pop.summary 
+beds.summary
+income.summary
+```
+The multiple R Squared for:
+
+Active Physician ~ Population = 0.8841
+
+Active Physician ~ Beds = 0.9034
+
+Active Physician ~ Income = 0.08989
+
+Therefore, based on the R Squared We are able to see that the number of beds is responsible for the largest reduction in variability for the number of active physicians. 
+
+Part 3
+
+```{r}
+table(cdi$region)
+```
+
+Confidence interval of slope for region 1
+```{r}
+region1_model <- lm(income_percap ~ pct_bachelors, data=cdi[cdi$region == 1,])
+confint(region1_model, "pct_bachelors", level =.9)
+```
+
+Confidence interval of slope for region 2
+```{r}
+region2_model <- lm(income_percap ~ pct_bachelors, data=cdi[cdi$region == 2,])
+confint(region2_model, "pct_bachelors", level =.9)
+
+```
+
+Confidence interval of slope for region 3
+```{r}
+region3_model <- lm(income_percap ~ pct_bachelors, data=cdi[cdi$region == 3,])
+confint(region3_model, "pct_bachelors", level =.9)
+```
+
+Confidence interval of slope for region 4
+```{r}
+region4_model <- lm(income_percap ~ pct_bachelors, data=cdi[cdi$region == 4,])
+confint(region4_model, "pct_bachelors", level =.9)
+```
+
+The confidence intervals shows that for each region there is a 90% chance that the slope will fall into those intervals, none of them seem to be very similar or have much overlap, so the slopes for each region probably will not be close to each other.
+
+```{r}
+library(knitr)
+```
+
+Ho: B1 = 0, Ha: B1 not equal to 0
+
+To conduct F tests, we need to compare the F statistic to the F critical value (F(1-alpha,1,n-2)) in this case alpha = .1 because the confidence level is .9, n = 440, so n-2 = 438, so looking at the F distribution table the critical value is equal to 2.71
+```{r}
+kable(anova(region1_model))
+kable(anova(region2_model))
+kable(anova(region3_model))
+kable(anova(region4_model))
+```
+
+For all regions since the F test statistic > 2.71, we reject the null hypothesis, so there is a linear association between percentage of people having at least a bachelor's degree and the per capita income for each region.
+
+Part 4
+
+```{r}
+plot(cdi$pop_total, residuals(model1), main = "Residual Plot (Total Pop)", xlab = "Fitted", ylab = "Residual")
+abline(h = 0, col="red")
+
+plot(cdi$hospital_beds, residuals(model2), main = "Residual Plot (Hospital Beds)", xlab = "Fitted", ylab = "Residual")
+abline(h = 0, col = "green")
+
+plot(cdi$income_total, residuals(model3), main = "Residual Plot (Total Income)", xlab = "Fitted", ylab = "Residual")
+abline(h = 0, col = "blue")
+
+#Model1 is pop_total.
+qqnorm(residuals(model1), main = "Normal Q-Q Plot (Total Pop)")
+qqline(residuals(model1), col = "red")
+
+#Model 2 is hospital_beds.
+qqnorm(residuals(model2), main = "Normal Q-Q Plot (Hospital Beds)")
+qqline(residuals(model2), col = "green")
+
+#Model 3 is income_total
+qqnorm(residuals(model3), main = "Normal Q-Q Plot (Total Income)")
+qqline(residuals(model3), col = "blue")
+```
+
+The Q-Q Graph compares the probability distribution by plotting the quantiles. If the data is normally distributed, then x = y and there will be a very strong linear association. 
+
+The 3 graphs have a stronger linear association in the middle, but the ends trail off. This means that there are “fat tails”. A majority of the data is focused in the center of the distribution. The data peaked too much in the middle, leaving very little distribution.
+
+Part 5 - Discussion:
+For Active Physicians in relation to Total Income and Hospital Beds, R Squared is closer to one so this means it does not vary from the linear regression model by much. However, with Active Physicians in relation to Total Population, R Squared is smaller, so there is more variance in proportion. The confidence intervals for the slopes of the four different regions vary from being around 193 to 583. However, the interval slopes for each region are not similar to each other. Some regions’ percentage of people who obtained bachelor degrees have a higher linear association with the income per capita than other regions do. In all the residual plots, the residuals are far apart from the zero line to show that the error of the regression models is significant. To improve the linear regression models, we could remove extreme outliers so that the data is not impacted by them and the linear association is more accurate. Also, taking data from a bigger population would improve the Q-Q plots since the data points seem to be squished together. 
+
