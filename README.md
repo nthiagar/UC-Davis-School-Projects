@@ -64,3 +64,9 @@ This repository contains various projects I completed as part of my coursework a
     - Vectorized Pandas operations vs. traditional for-loops  
     - Visualized performance using matplotlib and formed hypotheses on pipeline efficiency  
   - **Part 3:** Built shell-based scripts to automate setup and file processing; compared shell vs. Python-based workflows for row counting using performance metrics
+ 
+- **Folder:** `ECS 119/Project 2`  
+- **Description:**  Built, analyzed, and benchmarked custom MapReduce pipelines using PySpark, with a focus on understanding scalability, performance, and dataflow abstraction.
+ - **Part 1:** Implemented generalized map and reduce functions for flexible MapReduce pipelines. Applied them to analyze patterns in large numeric datasets (e.g., digit and letter frequencies from 1 to 1 million). Investigated edge cases like empty outputs and nondeterministic results due to parallel execution.
+ - **Part 2:** Created a detailed dataflow graph representing how data moves through the pipeline, highlighting transformations and shared computations across questions.
+ - **Part 3:** Evaluated real-world performance using configurable input sizes and parallelism levels. Measured throughput and latency across multiple configurations (1–16 partitions, up to 1M inputs) and visualized results. Reflected on differences between theoretical models and actual performance due to overheads and system-level factors.
