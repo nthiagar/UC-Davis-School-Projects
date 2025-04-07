@@ -46,3 +46,11 @@ This repository contains various projects I completed as part of my coursework a
   - Created a Python test harness to benchmark joins, text search, and updates
   - Generated JSON logs and visualized results using matplotlib
   - Analyzed the impact of indexing on query and update performance
+
+- **Folder:** `ECS 116/MongoDB Project`
+- **Description:** Created embedded MongoDB collections for Airbnb listings by aggregating calendar and review data using pipelines. Collaborated with Cindy Chen and Connor Young.
+  - Built nested documents using aggregation pipelines and lookup, group, and unwind stages
+  - Combined reviews and availability data into a unified collection
+  - Created JSON exports and performed performance comparisons with and without indexing
+  - Benchmarked text search queries using MongoDB’s text index for “good” and “bad” listings
+
