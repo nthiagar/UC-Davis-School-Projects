@@ -1,0 +1,29 @@
+1.
+Throughput, which measures how many items are processed in a certain amount of time, should increase as
+parallelism increases. If tasks in the dataflow graph can run independently without delays, doubling 
+the parallelism should double the throughput. Latency, which measures the time to complete a task, 
+would be expected to decrease with more partitions, but it depends on how the pipeline is designed 
+and the type of tasks involved. In many cases, latency stays about the same because of dependencies between stages.
+While throughput improves with more parallelism in fully parallelizable pipelines, 
+latency is more affected by the structure of the graph and the order in which tasks should run.
+
+
+2. 
+Since for data parallelism we assume the dataset is evenly divided among workers, 
+throughput is expected to increase proportionally with dataset size (N) since more data 
+is processed without communication between the workers. However, latency should decrease 
+as the input size grows, so that each worker processes a smaller amount of data. 
+In practice, throughput behaved as we expected, decreasing a lot from 10^-1 for N=1 to 10^5 for N=10^6. 
+However, latency did not show the expected decrease with an increasing N, 
+it stayed pretty consistent across different dataset sizes. Interestingly, latency did decrease with 
+increased parallelism (P), dropping from 30,000 at P=1 to under 10,000 at P=16. This shows that while the 
+theory assumes no extra delays, things like system slowdowns or resource limits can affect latency for 
+large datasets.
+
+
+3.
+Conjecture: I conjecture that the difference between theoretical and actual performance is due to 
+communication overhead. When tasks run in parallel, they often need to share or transfer data, 
+which takes time and slows things down. This delay is not included in the theoretical model, 
+so the real performance ends up being lower than expected. As the number of parallel tasks increases, 
+the time spent on data transfer also grows, which can reduce the benefits of higher parallelism.
