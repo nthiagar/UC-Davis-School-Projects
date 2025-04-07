@@ -54,3 +54,13 @@ This repository contains various projects I completed as part of my coursework a
   - Created JSON exports and performed performance comparisons with and without indexing
   - Benchmarked text search queries using MongoDB’s text index for “good” and “bad” listings
 
+### 5. ECS 119  
+- **Folder:** `ECS 119/Project 1`  
+- **Description:** This project involved analyzing QS World University Rankings data from 2019–2021 using Pandas to practice data processing and statistical analysis.
+  - **Part 1:** Cleaned and validated datasets, performed sampling, explored data quality, calculated regional averages, and built visualizations (box plots, scatter plots, correlation matrices) to examine ranking trends  
+  - Created a custom ranking system to simulate data manipulation and observed how falsified metrics can bias university rankings  
+  - **Part 2:** Designed and benchmarked data pipelines using throughput and latency metrics, comparing:
+    - File-based input vs. in-memory DataFrames  
+    - Vectorized Pandas operations vs. traditional for-loops  
+    - Visualized performance using matplotlib and formed hypotheses on pipeline efficiency  
+  - **Part 3:** Built shell-based scripts to automate setup and file processing; compared shell vs. Python-based workflows for row counting using performance metrics
