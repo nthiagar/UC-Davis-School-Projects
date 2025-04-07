@@ -40,7 +40,7 @@ This repository contains various projects I completed as part of my coursework a
 - **Data Source:** `STA 141A/ProjectData.xlsx`
 
 ### 4. ECS 116
-- **File:**: `ECS 116/Postgres Project`
+- **Folder:** `ECS 116/Postgres Project`
 - **Description:** This project focused on uploading and analyzing large-scale Airbnb NYC data in PostgreSQL to study SQL query performance. Collaborated with Cindy Chen and Connor Young.
   - Uploaded 15M+ records using DBeaver and SQL COPY commands
   - Created a Python test harness to benchmark joins, text search, and updates
