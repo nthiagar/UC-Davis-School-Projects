@@ -3,6 +3,13 @@
 ## Overview
 This repository contains various projects I completed as part of my coursework at UC Davis.
 
+## Projects
+1. [STA 108](#1-sta-108)  
+2. [STA 137](#2-sta-137)  
+3. [STA 141A](#3-sta-141a)  
+4. [ECS 116](#4-ecs-116)  
+5. [ECS 119](#5-ecs-119)
+
 ### 1. STA 108
 - **File:** `STA 108/STA 108 Project 1.Rmd`
 - **Description:** This project involves analyzing the CDI data in collaboration with Leticia Effrien and Victoria Tomlinson.
@@ -70,3 +77,12 @@ This repository contains various projects I completed as part of my coursework a
   - **Part 1:** Implemented generalized map and reduce functions for flexible MapReduce pipelines. Applied them to analyze patterns in large numeric datasets (e.g., digit and letter frequencies from 1 to 1 million). Investigated edge cases like empty outputs and nondeterministic results due to parallel execution.
   - **Part 2:** Created a detailed dataflow graph representing how data moves through the pipeline, highlighting transformations and shared computations across questions.
   - **Part 3:** Evaluated real-world performance using configurable input sizes and parallelism levels. Measured throughput and latency across multiple configurations (1–16 partitions, up to 1M inputs) and visualized results. Reflected on differences between theoretical models and actual performance due to overheads and system-level factors.
+
+## Skills Demonstrated
+- Statistical modeling and diagnostics (R)
+- Time series and logistic regression analysis
+- Relational and NoSQL database querying (PostgreSQL, MongoDB)
+- Pipeline performance benchmarking (throughput/latency, vectorization, I/O trade-offs)
+- Data manipulation with Pandas and PySpark MapReduce
+- Workflow automation and shell scripting
+
