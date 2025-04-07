@@ -3,7 +3,6 @@
 ## Overview
 This repository contains various projects I completed as part of my coursework at UC Davis.
 
-## Projects
 1. [STA 108](#1-sta-108)  
 2. [STA 137](#2-sta-137)  
 3. [STA 141A](#3-sta-141a)  
