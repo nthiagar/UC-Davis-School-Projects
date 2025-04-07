@@ -1,0 +1,25 @@
+q1,3
+q2,True
+q3a,False
+q4,['New York University (NYU)', 'Sorbonne University', 'Kyoto University', 'Zhejiang University', 'EPFL']
+q5a,[100, 100, 100, 100, 100, 100, 100, 100]
+q5b,[100, 100, 100, 100, 100, 100, 100, 100]
+q5c,100
+q6c,1
+q7,[9, 9, 9]
+q8a,29
+q9,[67.041, 67.68, 73.539, 82.147, 75.504]
+q10,5
+q11,           academic reputation  employer reputation  faculty student  citations per faculty  overall score
+region                                                                                                    
+Singapore                82.25                 75.3            100.0                  95.95           91.8
+q12,('Singapore', 'South Korea')
+q13,output/13a.png
+q14a,output/14a.png
+q15,(10, 4)
+q16,['university', '2019 overall score', '2020 overall score', '2021 overall score']
+q17,output/17a.png
+q18,output/18.png
+q20a,130.0
+q20b,['University of California, Berkeley (UCB)', 'California Institute of Technology (Caltech)', 'Massachusetts Institute of Technology (MIT)', 'Princeton University', 'Harvard University', 'Georgia Institute of Technology', 'Stanford University', 'EPFL', 'ETH Zurich - Swiss Federal Institute of Technology', 'University of Washington']
+q21,['University of California, Berkeley (UCB)', 'Stanford University', 'Harvard University', 'University of Oxford', 'California Institute of Technology (Caltech)', 'ETH Zurich - Swiss Federal Institute of Technology', 'University of Cambridge', 'UCL', 'Imperial College London', 'University of Chicago']
