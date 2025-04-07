@@ -38,3 +38,11 @@ This repository contains various projects I completed as part of my coursework a
   - Constructing various models to explore other potential relationships between campus crime and external factors
 
 - **Data Source:** `STA 141A/ProjectData.xlsx`
+
+### 4. ECS 116
+- **File:**: N/A
+- **Description:** This project focused on uploading and analyzing large-scale Airbnb NYC data in PostgreSQL to study SQL query performance. Collaborated with Cindy Chen and Connor Young.
+  - Uploaded 15M+ records using DBeaver and SQL COPY commands
+  - Created a Python test harness to benchmark joins, text search, and updates
+  - Generated JSON logs and visualized results using matplotlib
+  - Analyzed the impact of indexing on query and update performance
