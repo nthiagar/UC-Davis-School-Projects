@@ -1,0 +1,8 @@
+﻿Action,Count,Time in Seconds
+Query 5 pos,25196,85.399435
+Query 5 neg,1672,799.396678
+Query 6 pos,19228,80.187876
+Query 6 neg,1281,590.873696
+Create text index,,30.892075
+Query 7 pos,25197,98.256754
+Query 7 neg,1930,71.611383
